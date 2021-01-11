@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Ruo Ning Qiu" />
+
+
+<title>STA314 Assignment 2: Using a logistic Lasso model (with coordinate descent) to perform classifications on data by tidymodels workflow</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">STA314 Assignment 2: Using a logistic Lasso model (with coordinate descent) to perform classifications on data by tidymodels workflow</h1>
+<h4 class="author">Ruo Ning Qiu</h4>
+<h4 class="date">04 December, 2020</h4>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="co"># Before we begin, let&#39;s set the seed to be a student number so it produces the same result</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="co"># every time.</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="kw">set.seed</span>(<span class="dv">1004079631</span>)</span></code></pre></div>
+<p>This vignette will demonstrate how we perform classification with on data using <strong>tidymodels</strong> workflow with the helps of <span class="math inline">\(2\)</span> functions in <span style="color:blue">functions.R</span>, <code>fit_logistic_lasso()</code>, <code>predict_logistic_lasso()</code> to set up the logistic Lasso model using coordinate descent on the the penalized iteratively reweighted least squares algorithm with the help of <span style="color:blue">make_tidy.R</span> to set it up using <strong>parsnip</strong></p>
+<p>We need the following library packages to run the functions, make sure you have installed them! Note: It might be the case that <span style="color:blue">make_tidy.R</span> requires the newest package of <code>tidymodels</code>. If there is a error message that says: <span style="color:red">Error: The values passed to <code>set_encoding()</code> had extra arguments: ‘allow_sparse_x’</span>, try to type the following code to install the newest version of <code>tidymodels</code> and <code>tidymodels</code>: <span style="color:blue">install.packages(&quot;tidymodels&quot;)</span>, <span style="color:blue">install.packages(&quot;tidyverse&quot;)</span></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="co"># This also checks if the required libraries are installed while loading the functions.</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="co"># If not, please follow the return error message and install the required libraries.</span></span>
+<span id="cb2-3"><a href="#cb2-3"></a><span class="kw">source</span>(<span class="st">&quot;functions.R&quot;</span>)</span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="kw">source</span>(<span class="st">&quot;make_tidy.R&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="co"># load the libraries that we need, should be installed at this stage by previous check</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="kw">library</span>(tidyverse)</span>
+<span id="cb2-7"><a href="#cb2-7"></a><span class="kw">library</span>(tidymodels)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="co"># Before we begin, set the seed to be my student number so it </span></span>
+<span id="cb3-2"><a href="#cb3-2"></a><span class="co"># produces the same result every time.</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="kw">set.seed</span>(<span class="dv">1004079631</span>)</span></code></pre></div>
+<div id="using-a-tidymodels-workflow-fit-a-logistic-regression-lasso-with-the-penalized-iteratively-reweighted-least-squares-algorithm-to-this-data-and-by-inputting-the-penalty-lambda." class="section level2">
+<h2>Using a tidymodels workflow, fit a Logistic Regression Lasso with the penalized iteratively reweighted least squares algorithm to this data and by inputting the penalty <span class="math inline">\(\lambda\)</span>.</h2>
+<p>Let’s generate some data to fit our new model:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="co"># Generate some data (same as week9 tutorial)</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a>n =<span class="st"> </span><span class="dv">1000</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a>dat &lt;-<span class="st"> </span><span class="kw">tibble</span>(<span class="dt">x =</span> <span class="kw">seq</span>(<span class="op">-</span><span class="dv">3</span>,<span class="dv">3</span>, <span class="dt">length.out =</span> n),</span>
+<span id="cb4-4"><a href="#cb4-4"></a>              <span class="dt">w =</span> <span class="dv">3</span><span class="op">*</span><span class="kw">cos</span>(<span class="dv">3</span><span class="op">*</span><span class="kw">seq</span>(<span class="op">-</span>pi,pi, <span class="dt">length.out =</span> n)),</span>
+<span id="cb4-5"><a href="#cb4-5"></a>              <span class="dt">y =</span> <span class="kw">rbinom</span>(n,<span class="dt">size =</span> <span class="dv">1</span>, <span class="dt">prob =</span> <span class="dv">1</span><span class="op">/</span>(<span class="dv">1</span> <span class="op">+</span><span class="st"> </span><span class="kw">exp</span>(<span class="op">-</span>w<span class="op">+</span><span class="dv">2</span><span class="op">*</span>x)) )<span class="op">%&gt;%</span><span class="st"> </span>as.numeric <span class="op">%&gt;%</span><span class="st"> </span>factor,</span>
+<span id="cb4-6"><a href="#cb4-6"></a>              <span class="dt">cat =</span> <span class="kw">sample</span>(<span class="kw">c</span>(<span class="st">&quot;a&quot;</span>,<span class="st">&quot;b&quot;</span>,<span class="st">&quot;c&quot;</span>), n, <span class="dt">replace =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb4-7"><a href="#cb4-7"></a>)</span>
+<span id="cb4-8"><a href="#cb4-8"></a>split &lt;-<span class="st"> </span><span class="kw">initial_split</span>(dat, <span class="dt">strata =</span> <span class="kw">c</span>(<span class="st">&quot;cat&quot;</span>))</span>
+<span id="cb4-9"><a href="#cb4-9"></a>train &lt;-<span class="st"> </span><span class="kw">training</span>(split)</span>
+<span id="cb4-10"><a href="#cb4-10"></a>test &lt;-<span class="st"> </span><span class="kw">testing</span>(split)</span>
+<span id="cb4-11"><a href="#cb4-11"></a>rec &lt;-<span class="st"> </span><span class="kw">recipe</span>(y <span class="op">~</span><span class="st"> </span>. , <span class="dt">data =</span> train) <span class="op">%&gt;%</span></span>
+<span id="cb4-12"><a href="#cb4-12"></a><span class="st">  </span><span class="kw">step_dummy</span>(<span class="kw">all_nominal</span>(), <span class="op">-</span>y) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">step_zv</span>(<span class="kw">all_outcomes</span>()) <span class="op">%&gt;%</span></span>
+<span id="cb4-13"><a href="#cb4-13"></a><span class="st">  </span><span class="kw">step_normalize</span>(<span class="kw">all_numeric</span>(), <span class="op">-</span>y) <span class="op">%&gt;%</span><span class="st"> </span><span class="co"># don&#39;t normalize y!</span></span>
+<span id="cb4-14"><a href="#cb4-14"></a><span class="st">  </span><span class="kw">step_intercept</span>() <span class="co">## This is always last!</span></span></code></pre></div>
+<p>The lasso linear regression model with penalized penalized iteratively reweighted least squares algorithm is finished setting up by <span style="color:blue">make_tidy.R</span>. We just need to use it (<code>logistic_lasso()</code>) with package tidymodels’s help.Using a tidymodels workflow, we can fit a Logistic Regression Lasso with the penalized iteratively reweighted least squares algorithm to this data and by inputting the penalty <span class="math inline">\(\lambda = 0.001\)</span></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a>lambda =<span class="st"> </span><span class="fl">0.001</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a>spec &lt;-<span class="st"> </span><span class="kw">logistic_lasso</span>(<span class="dt">penalty =</span> lambda) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">set_engine</span>(<span class="st">&quot;fit_logistic_lasso&quot;</span>)</span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="co"># here fit_logistic_lasso is defined in functions.R, if you are interested in checking it out</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a></span>
+<span id="cb5-5"><a href="#cb5-5"></a><span class="co"># set up the workflow</span></span>
+<span id="cb5-6"><a href="#cb5-6"></a>fit &lt;-<span class="st"> </span><span class="kw">workflow</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">add_recipe</span>(rec) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">add_model</span>(spec) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">fit</span>(train)</span>
+<span id="cb5-7"><a href="#cb5-7"></a></span>
+<span id="cb5-8"><a href="#cb5-8"></a><span class="co"># check the prediction matrix</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a><span class="kw">predict</span>(fit, <span class="dt">new_data =</span> test) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">bind_cols</span>(test <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(y)) <span class="op">%&gt;%</span></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="kw">conf_mat</span>(<span class="dt">truth =</span> y, <span class="dt">estimate =</span> .pred_class)</span></code></pre></div>
+<pre><code>##           Truth
+## Prediction   0   1
+##          0 102  16
+##          1  13 118</code></pre>
+<p>Not bad!We can also compare our answer with the <code>glm</code> engine:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>ddat &lt;-<span class="st"> </span>rec <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">prep</span>(train) <span class="op">%&gt;%</span><span class="st"> </span>juice</span>
+<span id="cb7-2"><a href="#cb7-2"></a>ff &lt;-<span class="st"> </span><span class="kw">logistic_reg</span>(<span class="dt">penalty =</span> lambda, <span class="dt">mixture =</span> <span class="dv">1</span>) <span class="op">%&gt;%</span></span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="st">  </span><span class="kw">set_mode</span>(<span class="st">&quot;classification&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb7-4"><a href="#cb7-4"></a><span class="st">  </span><span class="kw">set_engine</span>(<span class="st">&quot;glm&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="st">  </span><span class="kw">fit</span>(y <span class="op">~</span><span class="st"> </span>., <span class="dt">family=</span><span class="st">&quot;binomial&quot;</span>, <span class="dt">dat =</span> ddat)</span>
+<span id="cb7-6"><a href="#cb7-6"></a>compare =<span class="st"> </span>ff <span class="op">%&gt;%</span><span class="st"> </span>tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(term, estimate) <span class="op">%&gt;%</span></span>
+<span id="cb7-7"><a href="#cb7-7"></a><span class="st">          </span><span class="kw">mutate</span>(<span class="dt">IRLS_estimate =</span> <span class="kw">c</span>(fit<span class="op">$</span>fit<span class="op">$</span>fit<span class="op">$</span>fit<span class="op">$</span>beta),</span>
+<span id="cb7-8"><a href="#cb7-8"></a>                 <span class="dt">err =</span> estimate <span class="op">-</span><span class="st"> </span>IRLS_estimate)</span>
+<span id="cb7-9"><a href="#cb7-9"></a>compare</span></code></pre></div>
+<pre><code>## # A tibble: 6 x 4
+##   term        estimate IRLS_estimate         err
+##   &lt;chr&gt;          &lt;dbl&gt;         &lt;dbl&gt;       &lt;dbl&gt;
+## 1 (Intercept)  -0.0261   -0.00000766 -0.0261    
+## 2 intercept    NA        -0.0261     NA         
+## 3 x            -3.27     -3.27       -0.0000540 
+## 4 w             2.16      2.16        0.0000419 
+## 5 cat_b         0.0360    0.0360      0.00000799
+## 6 cat_c        -0.117    -0.117      -0.00000641</code></pre>
+<p>We can see that the errors are pretty smalls (estimate is what our new model produces).</p>
+</div>
+<div id="using-a-tidymodels-workflow-fit-a-logistic-regression-lasso-with-the-penalized-iteratively-reweighted-least-squares-algorithm-to-this-data-and-tune-the-penalty-lambda." class="section level2">
+<h2>Using a tidymodels workflow, fit a Logistic Regression Lasso with the penalized iteratively reweighted least squares algorithm to this data and tune the penalty <span class="math inline">\(\lambda\)</span>.</h2>
+<p>Let’s get the recipe for workflow to prepare the model with tuning penalty this time! Since we do not know the penalty choice for the lasso linear regression model with penalized penalized iteratively reweighted least squares algorithm, let’s generate a lambda grid and do cross validation to choose the penalty <span class="math inline">\(\lambda\)</span>.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>lasso &lt;-<span class="st"> </span><span class="kw">logistic_lasso</span>(<span class="dt">penalty =</span> <span class="kw">tune</span>()) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">set_engine</span>(<span class="st">&quot;fit_logistic_lasso&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2"></a><span class="co"># use workflow</span></span>
+<span id="cb9-3"><a href="#cb9-3"></a>wf_lasso &lt;-<span class="st"> </span><span class="kw">workflow</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">add_recipe</span>(rec)</span>
+<span id="cb9-4"><a href="#cb9-4"></a></span>
+<span id="cb9-5"><a href="#cb9-5"></a><span class="co"># we want to pick a proper penalty, first generate the lambda_grid, candidates for penalty</span></span>
+<span id="cb9-6"><a href="#cb9-6"></a>lambda_grid &lt;-<span class="st"> </span><span class="kw">grid_regular</span>(<span class="kw">penalty</span>(), <span class="dt">levels =</span> <span class="dv">20</span>)</span>
+<span id="cb9-7"><a href="#cb9-7"></a></span>
+<span id="cb9-8"><a href="#cb9-8"></a><span class="co"># generate folds for cross validation, data is split into &lt;v&gt; groups of roughly equal sizes</span></span>
+<span id="cb9-9"><a href="#cb9-9"></a>folds &lt;-<span class="st"> </span><span class="kw">vfold_cv</span>(dat, <span class="dt">v =</span> <span class="dv">10</span>, <span class="dt">strata =</span> y)</span>
+<span id="cb9-10"><a href="#cb9-10"></a></span>
+<span id="cb9-11"><a href="#cb9-11"></a><span class="co"># tune our model to find a good value of lambda</span></span>
+<span id="cb9-12"><a href="#cb9-12"></a>wf_lasso &lt;-<span class="st"> </span>wf_lasso <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">add_model</span>(lasso)</span>
+<span id="cb9-13"><a href="#cb9-13"></a>fit_tune &lt;-<span class="st"> </span><span class="kw">tune_grid</span>(wf_lasso, <span class="dt">resamples =</span> folds, <span class="dt">grid =</span> lambda_grid, </span>
+<span id="cb9-14"><a href="#cb9-14"></a>                        <span class="dt">metrics =</span> <span class="kw">metric_set</span>(accuracy))</span>
+<span id="cb9-15"><a href="#cb9-15"></a></span>
+<span id="cb9-16"><a href="#cb9-16"></a>fit_tune <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">collect_metrics</span>() <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(penalty, mean)) <span class="op">+</span><span class="st"> </span><span class="kw">geom_line</span>() <span class="op">+</span><span class="st"> </span><span class="kw">facet_wrap</span>(<span class="op">~</span>.metric)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" style="display: block; margin: auto;" /></p>
+<p>Let’s select by picking the model that a good accuracy value as the metric for the penalty (using select_best() function) to finalize the model, and check the result.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>penalty_final &lt;-<span class="st"> </span>fit_tune <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select_best</span>(<span class="dt">metric =</span> <span class="st">&quot;accuracy&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2"></a></span>
+<span id="cb10-3"><a href="#cb10-3"></a><span class="co"># finalize the model (used function in make_tidy.R)</span></span>
+<span id="cb10-4"><a href="#cb10-4"></a>wf_final &lt;-<span class="st"> </span>wf_lasso <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">finalize_workflow</span>(penalty_final)</span>
+<span id="cb10-5"><a href="#cb10-5"></a>wf_final</span></code></pre></div>
+<pre><code>## ══ Workflow ════════════════════════════════════════════════════════════════════
+## Preprocessor: Recipe
+## Model: logistic_lasso()
+## 
+## ── Preprocessor ────────────────────────────────────────────────────────────────
+## 4 Recipe Steps
+## 
+## ● step_dummy()
+## ● step_zv()
+## ● step_normalize()
+## ● step_intercept()
+## 
+## ── Model ───────────────────────────────────────────────────────────────────────
+## Model Specification (classification)
+## 
+## Main Arguments:
+##   penalty = 1e-10
+## 
+## Computational engine: fit_logistic_lasso</code></pre>
+<p>Penalty is chossen; now it is time to check the confusion matrix!</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a>final_fit &lt;-<span class="st"> </span>wf_final <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">fit</span>(train)</span>
+<span id="cb12-2"><a href="#cb12-2"></a><span class="co"># check the prediction matrix</span></span>
+<span id="cb12-3"><a href="#cb12-3"></a><span class="kw">predict</span>(final_fit, <span class="dt">new_data =</span> test) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">bind_cols</span>(test <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(y)) <span class="op">%&gt;%</span></span>
+<span id="cb12-4"><a href="#cb12-4"></a><span class="kw">conf_mat</span>(<span class="dt">truth =</span> y, <span class="dt">estimate =</span> .pred_class)</span></code></pre></div>
+<pre><code>##           Truth
+## Prediction   0   1
+##          0 102  16
+##          1  13 118</code></pre>
+<p>Again, not bad by looking at the diagonal entry. We can also compare our answer with the <code>glm</code> engine:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a>ddat &lt;-<span class="st"> </span>rec <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">prep</span>(train) <span class="op">%&gt;%</span><span class="st"> </span>juice</span>
+<span id="cb14-2"><a href="#cb14-2"></a>ff &lt;-<span class="st"> </span><span class="kw">logistic_reg</span>(<span class="dt">penalty =</span> lambda, <span class="dt">mixture =</span> <span class="dv">1</span>) <span class="op">%&gt;%</span></span>
+<span id="cb14-3"><a href="#cb14-3"></a><span class="st">  </span><span class="kw">set_mode</span>(<span class="st">&quot;classification&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb14-4"><a href="#cb14-4"></a><span class="st">  </span><span class="kw">set_engine</span>(<span class="st">&quot;glm&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb14-5"><a href="#cb14-5"></a><span class="st">  </span><span class="kw">fit</span>(y <span class="op">~</span><span class="st"> </span>., <span class="dt">family=</span><span class="st">&quot;binomial&quot;</span>, <span class="dt">dat =</span> ddat)</span>
+<span id="cb14-6"><a href="#cb14-6"></a></span>
+<span id="cb14-7"><a href="#cb14-7"></a>compare =<span class="st"> </span>ff <span class="op">%&gt;%</span><span class="st"> </span>tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">select</span>(term, estimate) <span class="op">%&gt;%</span></span>
+<span id="cb14-8"><a href="#cb14-8"></a><span class="st">          </span><span class="kw">mutate</span>(<span class="dt">IRLS_estimate =</span> <span class="kw">c</span>(final_fit<span class="op">$</span>fit<span class="op">$</span>fit<span class="op">$</span>fit<span class="op">$</span>beta),</span>
+<span id="cb14-9"><a href="#cb14-9"></a>                 <span class="dt">err =</span> estimate <span class="op">-</span><span class="st"> </span>IRLS_estimate)</span>
+<span id="cb14-10"><a href="#cb14-10"></a>compare</span></code></pre></div>
+<pre><code>## # A tibble: 6 x 4
+##   term        estimate IRLS_estimate           err
+##   &lt;chr&gt;          &lt;dbl&gt;         &lt;dbl&gt;         &lt;dbl&gt;
+## 1 (Intercept)  -0.0261     -7.66e-13 -0.0261      
+## 2 intercept    NA          -2.61e- 2 NA           
+## 3 x            -3.27       -3.27e+ 0 -0.00000222  
+## 4 w             2.16        2.16e+ 0  0.00000162  
+## 5 cat_b         0.0360      3.60e- 2  0.000000106 
+## 6 cat_c        -0.117      -1.17e- 1 -0.0000000260</code></pre>
+<p>The errors are getting even smaller for the coefficients of beta (<span class="math inline">\(e^{-11}\)</span> vs. <span class="math inline">\(e^{-5}\)</span>). Tuning the penalty helps us to decrease the errors for the model, which makes sense.</p>
+<p>This is the end of the tutorial for how to using a logistic Lasso model (with coordinate descent) to perform classifications on data by tidymodels workflow. Thanks for bearing with it and have a good winter break!</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
